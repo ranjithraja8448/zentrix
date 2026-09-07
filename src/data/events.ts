@@ -1,0 +1,82 @@
+import { EventItem } from '@/types/registration';
+
+export const SYMPOSIUM_EVENTS: EventItem[] = [
+  {
+    id: 'startup-spark',
+    name: 'Startup Spark',
+    category: 'Technical',
+    description: 'Pitch your innovative tech business idea and disrupt the industry with visionary roadmaps.',
+    iconName: 'Rocket',
+    badgeColor: 'border-cyan-500/50 text-cyan-400 bg-cyan-950/40',
+  },
+  {
+    id: 'project-expo',
+    name: 'Project Expo',
+    category: 'Technical',
+    description: 'Showcase your cutting-edge working hardware or software prototypes to eminent jury panels.',
+    iconName: 'Cpu',
+    badgeColor: 'border-blue-500/50 text-blue-400 bg-blue-950/40',
+  },
+  {
+    id: 'bug-hunters',
+    name: 'Bug Hunters',
+    category: 'Technical',
+    description: 'Race against the clock to hunt down, diagnose, and squash critical code glitches.',
+    iconName: 'Bug',
+    badgeColor: 'border-pink-500/50 text-pink-400 bg-pink-950/40',
+  },
+  {
+    id: 'prompt-master',
+    name: 'Prompt Master',
+    category: 'Technical',
+    description: 'Master the art of Generative AI prompt engineering to generate exact solutions.',
+    iconName: 'Sparkles',
+    badgeColor: 'border-purple-500/50 text-purple-400 bg-purple-950/40',
+  },
+  {
+    id: 'cinespark',
+    name: 'Cinespark',
+    category: 'Non-Technical',
+    description: 'Unleash your visual storytelling and cinematography in this short-film showcase.',
+    iconName: 'Film',
+    badgeColor: 'border-amber-500/50 text-amber-400 bg-amber-950/40',
+  },
+  {
+    id: 'meme-creation',
+    name: 'Meme Creation',
+    category: 'Non-Technical',
+    description: 'Create viral, hilarious, and relatable tech memes that capture engineer life.',
+    iconName: 'Smile',
+    badgeColor: 'border-emerald-500/50 text-emerald-400 bg-emerald-950/40',
+  },
+  {
+    id: 'logo-hunting',
+    name: 'Logo Hunting',
+    category: 'Non-Technical',
+    description: 'Test your brand perception, visual memory, and detective instincts across tech giants.',
+    iconName: 'Search',
+    badgeColor: 'border-indigo-500/50 text-indigo-400 bg-indigo-950/40',
+  },
+  {
+    id: 'vedio-quiz',
+    name: 'Vedio Quiz',
+    category: 'Non-Technical',
+    description: 'Rapid-fire audiovisual trivia challenges covering technology, cinema, and pop culture.',
+    iconName: 'PlaySquare',
+    badgeColor: 'border-rose-500/50 text-rose-400 bg-rose-950/40',
+  },
+];
+
+export const DEPARTMENTS = [
+  'Computer Science & Engineering (CSE)',
+  'Artificial Intelligence & Data Science (AI & DS)',
+  'Information Technology (IT)',
+  'Electronics & Communication Engineering (ECE)',
+  'Electrical & Electronics Engineering (EEE)',
+  'Mechanical Engineering (MECH)',
+  'Civil Engineering (CIVIL)',
+  'Biomedical Engineering (BME)',
+  'Cyber Security',
+  'Robotics & Automation',
+  'Other / Science & Humanities',
+];
