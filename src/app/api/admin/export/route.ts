@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getAllRegistrations } from '@/lib/db';
+import { getAllRegistrationsAsync } from '@/lib/db';
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const registrations = getAllRegistrations();
+  const registrations = await getAllRegistrationsAsync();
 
   // Build CSV content
   const headers = [

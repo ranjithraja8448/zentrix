@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
 import path from 'path';
-import { saveRegistration } from '@/lib/db';
+import { saveRegistrationAsync } from '@/lib/db';
 import { StoredRegistration, RegistrationType } from '@/types/registration';
 import { SYMPOSIUM_EVENTS } from '@/data/events';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
@@ -19,22 +19,40 @@ export async function POST(request: Request) {
       const prefix = type === 'internal' ? 'ZENTRIX-INT' : 'ZENTRIX-EXT';
       const regId = `${prefix}-${randomSuffix}`;
 
-      // Handle Screenshot File
+      // Process payment screenshot
       const screenshotFile = formData.get('paymentScreenshot') as File | null;
       if (screenshotFile && screenshotFile.size > 0 && typeof screenshotFile.arrayBuffer === 'function') {
-        const bytes = await screenshotFile.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        try {
+          const bytes = await screenshotFile.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          const ext = path.extname(screenshotFile.name) || '.jpg';
+          const fileName = `${regId}-proof${ext}`;
 
-        const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
+          // If Supabase Storage is configured, upload to bucket
+          if (isSupabaseConfigured && supabase) {
+            const { error: uploadError } = await supabase.storage
+              .from('payment-screenshots')
+              .upload(fileName, buffer, {
+                contentType: screenshotFile.type || 'image/jpeg',
+                upsert: true,
+              });
+
+            if (!uploadError) {
+              const { data: pubData } = supabase.storage
+                .from('payment-screenshots')
+                .getPublicUrl(fileName);
+              screenshotUrl = pubData.publicUrl;
+            } else {
+              console.warn('Supabase storage upload error, fallback to base64:', uploadError);
+              screenshotUrl = `data:${screenshotFile.type || 'image/jpeg'};base64,${buffer.toString('base64')}`;
+            }
+          } else {
+            // Serverless fallback: store as base64 Data URL (guaranteed no filesystem write errors)
+            screenshotUrl = `data:${screenshotFile.type || 'image/jpeg'};base64,${buffer.toString('base64')}`;
+          }
+        } catch (imgError) {
+          console.warn('Screenshot processing warning:', imgError);
         }
-
-        const ext = path.extname(screenshotFile.name) || '.jpg';
-        const fileName = `${regId}-proof${ext}`;
-        const filePath = path.join(uploadsDir, fileName);
-        fs.writeFileSync(filePath, buffer);
-        screenshotUrl = `/uploads/${fileName}`;
       }
 
       // Parse JSON fields
@@ -130,7 +148,6 @@ export async function POST(request: Request) {
     }
 
     const attendeesCount = 1 + (data.teamMembers?.length || 0);
-    // Internal ₹150, External ₹200
     const pricePerHead = data.type === 'internal' ? 150 : 200;
     const amount = attendeesCount * pricePerHead;
 
@@ -153,20 +170,20 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    // Save to persistent database
-    saveRegistration(newRecord);
+    // Save to persistent database (Supabase and serverless fallback)
+    await saveRegistrationAsync(newRecord);
 
     return NextResponse.json({
       success: true,
       registrationId: newRecord.id,
-      message: 'Registration confirmed and stored in database successfully!',
+      message: 'Registration confirmed and stored successfully!',
       timestamp: newRecord.createdAt,
       data: newRecord,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Registration processing error:', error);
     return NextResponse.json(
-      { error: 'Failed to process registration request.' },
+      { error: error?.message || 'Failed to process registration request.' },
       { status: 500 }
     );
   }

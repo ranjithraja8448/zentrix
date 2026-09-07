@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getAllRegistrations, getAdminStats, deleteRegistration } from '@/lib/db';
+import { getAllRegistrationsAsync, getAdminStatsAsync, deleteRegistrationAsync } from '@/lib/db';
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -10,8 +10,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const registrations = getAllRegistrations();
-  const stats = getAdminStats();
+  const registrations = await getAllRegistrationsAsync();
+  const stats = await getAdminStatsAsync();
 
   return NextResponse.json({
     success: true,
@@ -35,6 +35,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Registration ID is required' }, { status: 400 });
   }
 
-  const deleted = deleteRegistration(id);
+  const deleted = await deleteRegistrationAsync(id);
   return NextResponse.json({ success: deleted });
 }
