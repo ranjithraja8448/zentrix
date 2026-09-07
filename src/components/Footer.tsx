@@ -92,11 +92,15 @@ export const Footer: React.FC = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span>Dept of CSE, IT, AI&DS Helpdesk: +91 98427 12345</span>
+                <a href="tel:+917904708317" className="hover:text-cyan-300 transition-colors">
+                  Dept of CSE, IT, AI&DS Helpdesk: +91 7904708317
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-purple-400 shrink-0" />
-                <span>zentrix2k26@kavery.org.in</span>
+                <a href="mailto:zentrix2k2six@gmail.com" className="hover:text-cyan-300 transition-colors">
+                  zentrix2k2six@gmail.com
+                </a>
               </li>
             </ul>
           </div>
