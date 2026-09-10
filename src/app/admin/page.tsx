@@ -22,7 +22,12 @@ import {
   X, 
   Image as ImageIcon,
   Share2,
-  Phone
+  Phone,
+  QrCode,
+  UserCheck,
+  Clock,
+  RotateCcw,
+  AlertCircle
 } from 'lucide-react';
 import { StoredRegistration, AdminStats } from '@/types/registration';
 import { SYMPOSIUM_EVENTS } from '@/data/events';
@@ -36,7 +41,17 @@ export default function AdminDashboardPage() {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'internal' | 'external'>('all');
+  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'present' | 'pending'>('all');
   const [eventFilter, setEventFilter] = useState<string>('all');
+
+  // Quick Check-In State
+  const [checkInInput, setCheckInInput] = useState('');
+  const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [checkInFeedback, setCheckInFeedback] = useState<{
+    status: 'success' | 'warning' | 'error';
+    message: string;
+    student?: StoredRegistration;
+  } | null>(null);
 
   // Selected registration for modal
   const [selectedReg, setSelectedReg] = useState<StoredRegistration | null>(null);
@@ -87,6 +102,101 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Toggle single student check-in
+  const handleToggleCheckIn = async (id: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus;
+    setCheckingInId(id);
+    try {
+      const res = await fetch('/api/admin/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, checkedIn: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRegistrations((prev) =>
+          prev.map((r) =>
+            r.id === id
+              ? { ...r, checkedIn: newStatus, checkedInAt: newStatus ? new Date().toISOString() : undefined }
+              : r
+          )
+        );
+        fetchRegistrations();
+      }
+    } catch (err) {
+      console.error('Check-in error:', err);
+    } finally {
+      setCheckingInId(null);
+    }
+  };
+
+  // Fast Barcode / QR / ID Quick Check-In
+  const handleQuickCheckIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = checkInInput.trim().toLowerCase();
+    if (!query) return;
+
+    // Find student by ID or clean phone
+    const target = registrations.find((r) => {
+      const idMatch = r.id.toLowerCase() === query;
+      const phoneMatch = r.phone.replace(/\D/g, '') === query.replace(/\D/g, '');
+      const emailMatch = r.email.toLowerCase() === query;
+      return idMatch || phoneMatch || emailMatch;
+    });
+
+    if (!target) {
+      setCheckInFeedback({
+        status: 'error',
+        message: `No student found matching "${checkInInput}". Please verify ID or Phone.`,
+      });
+      return;
+    }
+
+    if (target.checkedIn) {
+      const timeStr = target.checkedInAt
+        ? new Date(target.checkedInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        : 'earlier';
+      setCheckInFeedback({
+        status: 'warning',
+        message: `Already Checked In! ${target.fullName} (${target.id}) was checked in at ${timeStr}.`,
+        student: target,
+      });
+      setCheckInInput('');
+      return;
+    }
+
+    // Process check-in
+    setCheckingInId(target.id);
+    try {
+      const res = await fetch('/api/admin/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: target.id, checkedIn: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRegistrations((prev) =>
+          prev.map((r) =>
+            r.id === target.id
+              ? { ...r, checkedIn: true, checkedInAt: new Date().toISOString() }
+              : r
+          )
+        );
+        setCheckInFeedback({
+          status: 'success',
+          message: `✅ PRESENT: ${target.fullName} (${target.id}) checked in successfully!`,
+          student: target,
+        });
+        setCheckInInput('');
+        fetchRegistrations();
+      }
+    } catch (err) {
+      setCheckInFeedback({ status: 'error', message: 'Failed to process check-in.' });
+    } finally {
+      setCheckingInId(null);
+    }
+  };
+
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -104,6 +214,13 @@ export default function AdminDashboardPage() {
   const filteredRegistrations = registrations.filter((reg) => {
     const matchesType = typeFilter === 'all' || reg.type === typeFilter;
     const matchesEvent = eventFilter === 'all' || reg.events?.includes(eventFilter);
+    const matchesAttendance =
+      attendanceFilter === 'all'
+        ? true
+        : attendanceFilter === 'present'
+        ? reg.checkedIn === true
+        : !reg.checkedIn;
+
     const q = searchQuery.toLowerCase();
     const matchesSearch = 
       reg.id.toLowerCase().includes(q) ||
@@ -113,7 +230,7 @@ export default function AdminDashboardPage() {
       reg.collegeName.toLowerCase().includes(q) ||
       (reg.transactionId && reg.transactionId.toLowerCase().includes(q));
 
-    return matchesType && matchesEvent && matchesSearch;
+    return matchesType && matchesEvent && matchesAttendance && matchesSearch;
   });
 
   return (
@@ -127,14 +244,14 @@ export default function AdminDashboardPage() {
               The Kavery Engineering College
             </span>
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950 border border-purple-500/50 text-purple-300">
-              ADMIN DESK
+              COORDINATOR ADMIN DESK
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">
-            Symposium 2K26 Registration Analytics
+            ZENTRIX 2K26 Registration & Live Attendance Desk
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Database location: <code className="text-cyan-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">registration web/data/registrations.json</code>
+            Real-time participant entry tracking, payment auditing & attendance records.
           </p>
         </div>
 
@@ -153,7 +270,7 @@ export default function AdminDashboardPage() {
           <a
             href="/api/admin/export?type=internal"
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-pink-950/80 hover:bg-pink-900 border border-pink-500/50 text-pink-300 text-xs font-bold shadow-[0_0_15px_rgba(255,0,127,0.25)] transition"
-            title="Download Day 1 Internal Students CSV"
+            title="Download Day 1 Internal Students CSV with Attendance"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export Internal (.csv)</span>
@@ -163,7 +280,7 @@ export default function AdminDashboardPage() {
           <a
             href="/api/admin/export?type=external"
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 text-xs font-bold shadow-[0_0_15px_rgba(0,240,255,0.25)] transition"
-            title="Download Day 2 External Delegates CSV"
+            title="Download Day 2 External Delegates CSV with Attendance"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export External (.csv)</span>
@@ -187,6 +304,91 @@ export default function AdminDashboardPage() {
             <span>Logout</span>
           </button>
         </div>
+      </div>
+
+      {/* ⚡ ON-SPOT CHECK-IN COUNTER (BARCODE & QR SCANNER ENTRY BAR) */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-cyan-950/60 via-slate-900 to-purple-950/60 border-2 border-cyan-500/50 shadow-[0_0_30px_rgba(0,240,255,0.2)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-cyan-500/20 border border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(0,240,255,0.4)]">
+              <QrCode className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400 block font-mono">
+                EVENT DAY REGISTRATION DESK
+              </span>
+              <h2 className="text-lg sm:text-xl font-black text-white">
+                Live Attendance Check-In Verification
+              </h2>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-bold font-mono">
+              ⚡ FAST SCAN ACTIVE
+            </span>
+          </div>
+        </div>
+
+        {/* Scanner Input Form */}
+        <form onSubmit={handleQuickCheckIn} className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-5 h-5 text-cyan-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={checkInInput}
+              onChange={(e) => setCheckInInput(e.target.value)}
+              placeholder="Scan Barcode / QR Code OR Enter Pass ID (e.g. ZENTRIX-INT-1234) or Phone Number..."
+              className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-slate-950 border border-cyan-500/60 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 font-mono transition"
+              autoFocus
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0"
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>Mark Present / Check In</span>
+          </button>
+        </form>
+
+        {/* Live Feedback Alert Banner */}
+        {checkInFeedback && (
+          <div className={`mt-4 p-4 rounded-2xl border flex items-start justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300 ${
+            checkInFeedback.status === 'success'
+              ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+              : checkInFeedback.status === 'warning'
+              ? 'bg-amber-950/80 border-amber-500/60 text-amber-200'
+              : 'bg-red-950/80 border-red-500/60 text-red-200'
+          }`}>
+            <div className="flex items-start gap-3">
+              {checkInFeedback.status === 'success' ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className="text-sm font-bold">{checkInFeedback.message}</p>
+                {checkInFeedback.student && (
+                  <div className="text-xs mt-1 text-slate-300 flex flex-wrap gap-x-4 gap-y-1 font-mono">
+                    <span>College: <strong className="text-white">{checkInFeedback.student.collegeName}</strong></span>
+                    <span>Dept: <strong className="text-white">{checkInFeedback.student.department}</strong></span>
+                    <span>Events: <strong className="text-cyan-300">{checkInFeedback.student.events.join(', ')}</strong></span>
+                    <span>Fee: <strong className="text-emerald-400">₹{checkInFeedback.student.amount}/-</strong></span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setCheckInFeedback(null)}
+              className="text-slate-400 hover:text-white shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* SHAREABLE DIRECT LINKS CARD */}
@@ -245,36 +447,51 @@ export default function AdminDashboardPage() {
 
       {/* TOP METRICS STATS CARDS */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           
           <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Registrations</span>
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Registered</span>
             <div className="text-3xl font-black text-white mt-1">{stats.totalRegistrations}</div>
-            <p className="text-[11px] text-slate-500 mt-1">Distinct registration passes</p>
+            <p className="text-[11px] text-slate-500 mt-1">Confirmed passes</p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/90 border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)]">
-            <span className="text-[11px] font-semibold text-purple-400 uppercase tracking-wider">Total Attendees</span>
-            <div className="text-3xl font-black text-purple-300 mt-1">{stats.totalParticipants}</div>
-            <p className="text-[11px] text-slate-500 mt-1">Including team members</p>
+          <div className="p-5 rounded-2xl bg-emerald-950/60 border border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Total Checked In</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">
+                {stats.totalRegistrations > 0 ? Math.round((stats.checkedInCount / stats.totalRegistrations) * 100) : 0}%
+              </span>
+            </div>
+            <div className="text-3xl font-black text-emerald-300 mt-1">{stats.checkedInCount}</div>
+            <p className="text-[11px] text-emerald-400/80 mt-1">Students present at venue</p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/40 shadow-[0_0_15px_rgba(0,240,255,0.15)]">
-            <span className="text-[11px] font-semibold text-cyan-400 uppercase tracking-wider">Internal Students</span>
-            <div className="text-3xl font-black text-cyan-300 mt-1">{stats.internalCount}</div>
-            <p className="text-[11px] text-slate-500 mt-1">TKEC participants</p>
+          <div className="p-5 rounded-2xl bg-slate-900/90 border border-amber-500/40 shadow-md">
+            <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">Pending Arrival</span>
+            <div className="text-3xl font-black text-amber-300 mt-1">{stats.pendingCheckInCount}</div>
+            <p className="text-[11px] text-slate-500 mt-1">Yet to check in</p>
           </div>
 
           <div className="p-5 rounded-2xl bg-slate-900/90 border border-pink-500/40 shadow-[0_0_15px_rgba(255,0,127,0.15)]">
-            <span className="text-[11px] font-semibold text-pink-400 uppercase tracking-wider">External Colleges</span>
-            <div className="text-3xl font-black text-pink-300 mt-1">{stats.externalCount}</div>
-            <p className="text-[11px] text-slate-500 mt-1">National delegates</p>
+            <span className="text-[11px] font-semibold text-pink-400 uppercase tracking-wider">Day 1 Internal</span>
+            <div className="text-3xl font-black text-pink-300 mt-1">
+              {stats.checkedInInternalCount} <span className="text-sm text-slate-400 font-normal">/ {stats.internalCount}</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">TKEC attendance</p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)] col-span-2 md:col-span-1">
-            <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Total Fees Collected</span>
+          <div className="p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/40 shadow-[0_0_15px_rgba(0,240,255,0.15)]">
+            <span className="text-[11px] font-semibold text-cyan-400 uppercase tracking-wider">Day 2 External</span>
+            <div className="text-3xl font-black text-cyan-300 mt-1">
+              {stats.checkedInExternalCount} <span className="text-sm text-slate-400 font-normal">/ {stats.externalCount}</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">Delegates attendance</p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+            <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Total Fees</span>
             <div className="text-3xl font-black text-emerald-300 mt-1">₹{stats.totalRevenue}/-</div>
-            <p className="text-[11px] text-slate-500 mt-1">₹200 per external head</p>
+            <p className="text-[11px] text-slate-500 mt-1">Internal ₹150 + Ext ₹200</p>
           </div>
 
         </div>
@@ -333,13 +550,13 @@ export default function AdminDashboardPage() {
           <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-1 gap-1">
             <button
               onClick={() => setTypeFilter('internal')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                 typeFilter === 'internal'
                   ? 'bg-pink-600 text-white shadow-[0_0_15px_rgba(255,0,127,0.4)]'
                   : 'text-slate-400 hover:text-pink-300 hover:bg-pink-950/40'
               }`}
             >
-              <span>Day 1: Internal (24 Sep)</span>
+              <span>Day 1: Internal</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-pink-950/80 border border-pink-500/40 font-mono">
                 {stats?.internalCount || 0}
               </span>
@@ -347,13 +564,13 @@ export default function AdminDashboardPage() {
 
             <button
               onClick={() => setTypeFilter('external')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                 typeFilter === 'external'
                   ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(0,240,255,0.4)]'
                   : 'text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/40'
               }`}
             >
-              <span>Day 2: External (25 Sep)</span>
+              <span>Day 2: External</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-cyan-950/80 border border-cyan-500/40 font-mono">
                 {stats?.externalCount || 0}
               </span>
@@ -361,16 +578,46 @@ export default function AdminDashboardPage() {
 
             <button
               onClick={() => setTypeFilter('all')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 typeFilter === 'all'
                   ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <span>All</span>
+              <span>All Types</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-950/80 border border-purple-500/40 font-mono">
                 {registrations.length}
               </span>
+            </button>
+          </div>
+
+          {/* Attendance Filter Tabs */}
+          <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-1 gap-1">
+            <button
+              onClick={() => setAttendanceFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                attendanceFilter === 'all' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setAttendanceFilter('present')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                attendanceFilter === 'present' ? 'bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-emerald-400 hover:bg-emerald-950/40'
+              }`}
+            >
+              <UserCheck className="w-3 h-3" />
+              <span>Present ({stats?.checkedInCount || 0})</span>
+            </button>
+            <button
+              onClick={() => setAttendanceFilter('pending')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                attendanceFilter === 'pending' ? 'bg-amber-600 text-white' : 'text-amber-400 hover:bg-amber-950/40'
+              }`}
+            >
+              <Clock className="w-3 h-3" />
+              <span>Pending ({stats?.pendingCheckInCount || 0})</span>
             </button>
           </div>
 
@@ -399,19 +646,20 @@ export default function AdminDashboardPage() {
             <thead className="bg-slate-950 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>
                 <th className="py-3.5 px-4">Pass ID</th>
+                <th className="py-3.5 px-4">Attendance Check-In</th>
                 <th className="py-3.5 px-4">Type</th>
                 <th className="py-3.5 px-4">Participant Details</th>
                 <th className="py-3.5 px-4">College & Dept</th>
                 <th className="py-3.5 px-4">Events</th>
                 <th className="py-3.5 px-4">Team</th>
-                <th className="py-3.5 px-4">Fees / Payment</th>
+                <th className="py-3.5 px-4">Fees</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
               {filteredRegistrations.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-500">
+                  <td colSpan={9} className="py-12 text-center text-slate-500">
                     No registrations found matching your filters.
                   </td>
                 </tr>
@@ -436,16 +684,50 @@ export default function AdminDashboardPage() {
                       </span>
                     </td>
 
+                    {/* ATTENDANCE CHECK-IN STATUS BUTTON */}
+                    <td className="py-3.5 px-4">
+                      {reg.checkedIn ? (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-[11px] font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>PRESENT</span>
+                          </span>
+                          <button
+                            onClick={() => handleToggleCheckIn(reg.id, true)}
+                            disabled={checkingInId === reg.id}
+                            title="Undo / Unmark Check-in"
+                            className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-amber-300 transition"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleCheckIn(reg.id, false)}
+                          disabled={checkingInId === reg.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-950 hover:bg-emerald-950/80 border border-slate-700 hover:border-emerald-500/60 text-slate-300 hover:text-emerald-300 text-xs font-bold transition shadow-sm"
+                        >
+                          <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{checkingInId === reg.id ? 'Saving...' : 'Mark Present'}</span>
+                        </button>
+                      )}
+                      {reg.checkedInAt && (
+                        <div className="text-[9px] text-slate-500 font-mono mt-0.5">
+                          {new Date(reg.checkedInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
+                    </td>
+
                     {/* Type */}
                     <td className="py-3.5 px-4">
                       <span
                         className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                           reg.type === 'internal'
-                            ? 'border-cyan-500/50 text-cyan-300 bg-cyan-950/40'
-                            : 'border-pink-500/50 text-pink-300 bg-pink-950/40'
+                            ? 'border-pink-500/50 text-pink-300 bg-pink-950/40'
+                            : 'border-cyan-500/50 text-cyan-300 bg-cyan-950/40'
                         }`}
                       >
-                        {reg.type === 'internal' ? 'Internal' : 'External'}
+                        {reg.type === 'internal' ? 'Day 1 Internal' : 'Day 2 External'}
                       </span>
                     </td>
 
@@ -506,49 +788,46 @@ export default function AdminDashboardPage() {
 
                     {/* Payment / Fees */}
                     <td className="py-3.5 px-4">
-                      {reg.type === 'internal' ? (
-                        <span className="text-xs text-slate-400 font-mono">Free</span>
-                      ) : (
-                        <div>
-                          <span className="font-bold text-emerald-400 font-mono">
-                            ₹{reg.amount || (reg.totalAttendees || 1) * 200}/-
-                          </span>
-                          {reg.transactionId && (
-                            <div className="text-[10px] font-mono text-slate-400 truncate max-w-[120px]" title={reg.transactionId}>
-                              UTR: {reg.transactionId}
-                            </div>
-                          )}
-                          {reg.paymentScreenshotUrl && (
-                            <a
-                              href={reg.paymentScreenshotUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[10px] text-pink-400 hover:underline flex items-center gap-0.5 mt-0.5"
-                            >
-                              <ImageIcon className="w-2.5 h-2.5" /> View Proof
-                            </a>
-                          )}
-                        </div>
-                      )}
+                      <div>
+                        <span className={`font-bold font-mono ${reg.type === 'internal' ? 'text-pink-400' : 'text-cyan-400'}`}>
+                          ₹{reg.amount || (reg.totalAttendees || 1) * (reg.type === 'internal' ? 150 : 200)}/-
+                        </span>
+                        {reg.transactionId && (
+                          <div className="text-[10px] font-mono text-slate-400 truncate max-w-[120px]" title={reg.transactionId}>
+                            UTR: {reg.transactionId}
+                          </div>
+                        )}
+                        {reg.paymentScreenshotUrl && (
+                          <a
+                            href={reg.paymentScreenshotUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-pink-400 hover:underline flex items-center gap-0.5 mt-0.5"
+                          >
+                            <ImageIcon className="w-2.5 h-2.5" /> View Proof
+                          </a>
+                        )}
+                      </div>
                     </td>
 
                     {/* Actions */}
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => setSelectedReg(reg)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-950 hover:text-cyan-300 text-slate-300 border border-slate-700 transition mr-2"
-                        title="View Full Details"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(reg.id)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-950 hover:text-red-400 text-slate-400 border border-slate-700 transition"
-                        title="Delete record"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setSelectedReg(reg)}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white transition"
+                          title="View Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(reg.id)}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-300 transition"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
 
                   </tr>
@@ -559,131 +838,126 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* FULL DETAILS MODAL */}
+      {/* REGISTRATION DETAIL MODAL */}
       {selectedReg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-slate-900 border border-cyan-400/80 rounded-3xl p-6 shadow-[0_0_50px_rgba(0,240,255,0.3)] my-8 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-white space-y-4">
             
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div>
-                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider">
-                  Registration Verification Desk
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                  selectedReg.type === 'internal'
+                    ? 'border-pink-500/50 text-pink-300 bg-pink-950/40'
+                    : 'border-cyan-500/50 text-cyan-300 bg-cyan-950/40'
+                }`}>
+                  {selectedReg.type === 'internal' ? 'Day 1 Internal (₹150)' : 'Day 2 External (₹200)'}
                 </span>
-                <h3 className="text-xl font-black text-white">{selectedReg.fullName}</h3>
+                <span className="font-mono text-xs font-bold text-white">
+                  {selectedReg.id}
+                </span>
               </div>
+
               <button
                 onClick={() => setSelectedReg(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="py-4 space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-slate-400">Pass ID:</span>
-                  <p className="font-mono font-bold text-cyan-300 mt-0.5">{selectedReg.id}</p>
-                </div>
-                <div>
-                  <span className="text-slate-400">College:</span>
-                  <p className="font-semibold text-white mt-0.5">{selectedReg.collegeName}</p>
-                </div>
-                <div>
-                  <span className="text-slate-400">Email:</span>
-                  <p className="text-white mt-0.5">{selectedReg.email}</p>
-                </div>
-                <div>
-                  <span className="text-slate-400">WhatsApp Phone:</span>
-                  <p className="text-emerald-400 font-mono mt-0.5">{selectedReg.phone}</p>
-                </div>
-                <div>
-                  <span className="text-slate-400">Department:</span>
-                  <p className="text-white mt-0.5">{selectedReg.department}</p>
-                </div>
-                <div>
-                  <span className="text-slate-400">Total Participants:</span>
-                  <p className="text-purple-300 font-bold mt-0.5">{selectedReg.totalAttendees} members</p>
-                </div>
+            {/* Attendance Status inside Modal */}
+            <div className={`p-3 rounded-xl border flex items-center justify-between ${
+              selectedReg.checkedIn
+                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                : 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+            }`}>
+              <div className="flex items-center gap-2 text-xs">
+                {selectedReg.checkedIn ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <Clock className="w-4 h-4 text-amber-400" />
+                )}
+                <span>
+                  Attendance: <strong>{selectedReg.checkedIn ? 'PRESENT AT CAMPUS' : 'PENDING ARRIVAL'}</strong>
+                </span>
               </div>
 
-              {/* Team Members List */}
-              {selectedReg.isTeam && selectedReg.teamMembers && selectedReg.teamMembers.length > 0 && (
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-[11px] text-purple-400 font-bold uppercase tracking-wider block mb-1.5">
-                    Team Members:
-                  </span>
-                  <ul className="space-y-1">
-                    {selectedReg.teamMembers.map((m, i) => (
-                      <li key={i} className="text-slate-300 flex items-center gap-1.5">
-                        <span className="text-purple-400 font-bold">#{i + 2}</span> {m}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <button
+                onClick={() => handleToggleCheckIn(selectedReg.id, selectedReg.checkedIn ?? false)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                  selectedReg.checkedIn
+                    ? 'bg-slate-800 hover:bg-red-950 text-slate-300 hover:text-red-300'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                }`}
+              >
+                {selectedReg.checkedIn ? 'Mark Absent' : 'Mark Present'}
+              </button>
+            </div>
 
-              {/* Events list */}
-              <div>
-                <span className="text-slate-400 block mb-1.5">Registered Events:</span>
-                <div className="flex flex-wrap gap-2">
-                  {selectedReg.events?.map((ev) => (
-                    <span
-                      key={ev}
-                      className="px-3 py-1 rounded-lg bg-cyan-950 border border-cyan-500/40 text-cyan-300 font-medium"
-                    >
-                      {ev}
-                    </span>
-                  ))}
-                </div>
+            <div className="space-y-2.5 text-xs">
+              <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400">Full Name</span>
+                <span className="font-bold text-white">{selectedReg.fullName}</span>
               </div>
-
-              {/* Payment Proof Section if External */}
-              {selectedReg.type === 'external' && (
-                <div className="p-4 rounded-xl bg-slate-950 border border-pink-500/30 space-y-2">
-                  <span className="text-xs font-bold text-pink-400 uppercase tracking-wider block">
-                    Payment Verification
-                  </span>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Fee Amount:</span>
-                    <strong className="text-white font-mono">₹{selectedReg.amount}/-</strong>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Transaction ID / UTR:</span>
-                    <strong className="text-cyan-300 font-mono">{selectedReg.transactionId || 'N/A'}</strong>
-                  </div>
-
-                  {selectedReg.paymentScreenshotUrl && (
-                    <div className="mt-2 pt-2 border-t border-slate-800">
-                      <span className="text-[11px] text-slate-400 block mb-2">Uploaded Payment Screenshot:</span>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={selectedReg.paymentScreenshotUrl}
-                        alt="Payment screenshot"
-                        className="max-h-60 rounded-lg border border-slate-700 object-contain mx-auto"
-                      />
-                      <div className="text-center mt-2">
-                        <a
-                          href={selectedReg.paymentScreenshotUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-pink-400 hover:underline"
-                        >
-                          <ExternalLink className="w-3 h-3" /> Open in full size
-                        </a>
-                      </div>
-                    </div>
-                  )}
+              <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400">Phone</span>
+                <a href={`tel:${selectedReg.phone}`} className="font-bold text-cyan-300 hover:underline">
+                  {selectedReg.phone}
+                </a>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400">Email</span>
+                <span className="font-medium text-slate-200">{selectedReg.email}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400">College</span>
+                <span className="font-bold text-white text-right max-w-[260px]">{selectedReg.collegeName}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400">Department</span>
+                <span className="font-medium text-slate-200">{selectedReg.department}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400">Events (1 Tech + 1 Non-Tech)</span>
+                <span className="font-bold text-pink-300 text-right">{selectedReg.events?.join(', ')}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400">Total Attendees</span>
+                <span className="font-bold text-white">{selectedReg.totalAttendees} Person(s)</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400">Amount Paid</span>
+                <span className="font-black text-emerald-400 font-mono">₹{selectedReg.amount}/-</span>
+              </div>
+              {selectedReg.transactionId && (
+                <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+                  <span className="text-slate-400">UPI / UTR Transaction ID</span>
+                  <span className="font-mono text-cyan-300 font-bold">{selectedReg.transactionId}</span>
                 </div>
               )}
             </div>
 
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-end">
+            {/* Payment Screenshot */}
+            {selectedReg.paymentScreenshotUrl && (
+              <div className="mt-3">
+                <span className="text-xs text-slate-400 block mb-1.5">Payment Screenshot Proof:</span>
+                <div className="rounded-xl overflow-hidden border border-slate-800 max-h-48 flex items-center justify-center bg-black">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedReg.paymentScreenshotUrl}
+                    alt="Payment Proof"
+                    className="max-h-48 object-contain"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setSelectedReg(null)}
                 className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white transition"
               >
-                Close
+                Close Window
               </button>
             </div>
 

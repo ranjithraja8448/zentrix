@@ -52,6 +52,8 @@ function mapRowToRegistration(row: any, defaultType: 'internal' | 'external'): S
     transactionId: row.transaction_id || '',
     paymentScreenshotUrl: row.payment_screenshot_url || '',
     paymentStatus: row.payment_status || 'verified',
+    checkedIn: Boolean(row.checked_in),
+    checkedInAt: row.checked_in_at || undefined,
     createdAt: row.created_at || new Date().toISOString(),
   };
 }
@@ -155,6 +157,8 @@ export async function saveRegistrationAsync(reg: StoredRegistration): Promise<bo
       transaction_id: reg.transactionId || null,
       payment_screenshot_url: reg.paymentScreenshotUrl || null,
       payment_status: reg.paymentStatus,
+      checked_in: reg.checkedIn ?? false,
+      checked_in_at: reg.checkedInAt || null,
       created_at: reg.createdAt,
     };
 
@@ -209,6 +213,9 @@ export async function getAdminStatsAsync(): Promise<AdminStats> {
   let internalCount = 0;
   let externalCount = 0;
   let totalRevenue = 0;
+  let checkedInCount = 0;
+  let checkedInInternalCount = 0;
+  let checkedInExternalCount = 0;
   const eventsCount: Record<string, number> = {};
 
   for (const reg of registrations) {
@@ -218,9 +225,15 @@ export async function getAdminStatsAsync(): Promise<AdminStats> {
     if (reg.type === 'internal') {
       internalCount += 1;
       totalRevenue += reg.amount !== undefined ? reg.amount : attendees * 150;
+      if (reg.checkedIn) checkedInInternalCount += 1;
     } else {
       externalCount += 1;
       totalRevenue += reg.amount !== undefined ? reg.amount : attendees * 200;
+      if (reg.checkedIn) checkedInExternalCount += 1;
+    }
+
+    if (reg.checkedIn) {
+      checkedInCount += 1;
     }
 
     if (Array.isArray(reg.events)) {
@@ -236,6 +249,10 @@ export async function getAdminStatsAsync(): Promise<AdminStats> {
     internalCount,
     externalCount,
     totalRevenue,
+    checkedInCount,
+    checkedInInternalCount,
+    checkedInExternalCount,
+    pendingCheckInCount: Math.max(0, registrations.length - checkedInCount),
     eventsCount,
   };
 }
@@ -246,6 +263,9 @@ export function getAdminStats(): AdminStats {
   let internalCount = 0;
   let externalCount = 0;
   let totalRevenue = 0;
+  let checkedInCount = 0;
+  let checkedInInternalCount = 0;
+  let checkedInExternalCount = 0;
   const eventsCount: Record<string, number> = {};
 
   for (const reg of registrations) {
@@ -255,9 +275,15 @@ export function getAdminStats(): AdminStats {
     if (reg.type === 'internal') {
       internalCount += 1;
       totalRevenue += reg.amount !== undefined ? reg.amount : attendees * 150;
+      if (reg.checkedIn) checkedInInternalCount += 1;
     } else {
       externalCount += 1;
       totalRevenue += reg.amount !== undefined ? reg.amount : attendees * 200;
+      if (reg.checkedIn) checkedInExternalCount += 1;
+    }
+
+    if (reg.checkedIn) {
+      checkedInCount += 1;
     }
 
     if (Array.isArray(reg.events)) {
@@ -273,8 +299,50 @@ export function getAdminStats(): AdminStats {
     internalCount,
     externalCount,
     totalRevenue,
+    checkedInCount,
+    checkedInInternalCount,
+    checkedInExternalCount,
+    pendingCheckInCount: Math.max(0, registrations.length - checkedInCount),
     eventsCount,
   };
+}
+
+export async function toggleCheckInAsync(
+  id: string,
+  checkedIn: boolean
+): Promise<{ success: boolean; registration?: StoredRegistration }> {
+  const timestamp = checkedIn ? new Date().toISOString() : null;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const updateData = { checked_in: checkedIn, checked_in_at: timestamp };
+      await supabase.from('internal_registrations').update(updateData).eq('id', id);
+      await supabase.from('external_registrations').update(updateData).eq('id', id);
+      await supabase.from('registrations').update(updateData).eq('id', id);
+    } catch (err) {
+      console.error('Supabase checkin update error:', err);
+    }
+  }
+
+  // Update local file storage
+  try {
+    ensureLocalDb();
+    const dbFile = getDbPath();
+    const registrations = getAllRegistrationsLocal();
+    const target = registrations.find((r) => r.id === id);
+    if (target) {
+      target.checkedIn = checkedIn;
+      target.checkedInAt = timestamp || undefined;
+      fs.writeFileSync(dbFile, JSON.stringify(registrations, null, 2), 'utf-8');
+      return { success: true, registration: target };
+    }
+  } catch (err) {
+    console.error('Local checkin update error:', err);
+  }
+
+  const all = await getAllRegistrationsAsync();
+  const updated = all.find((r) => r.id === id);
+  return { success: !!updated, registration: updated };
 }
 
 export async function deleteRegistrationAsync(id: string): Promise<boolean> {

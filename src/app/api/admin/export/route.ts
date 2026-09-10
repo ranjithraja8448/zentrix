@@ -28,6 +28,8 @@ export async function GET(request: Request) {
   // Build CSV content
   const headers = [
     'Registration ID',
+    'Attendance Status',
+    'Check-in Time',
     'Category',
     'Event Date',
     'Full Name',
@@ -53,6 +55,8 @@ export async function GET(request: Request) {
 
   const rows = registrations.map((r) => [
     escapeCsv(r.id),
+    escapeCsv(r.checkedIn ? 'PRESENT' : 'NOT CHECKED IN'),
+    escapeCsv(r.checkedInAt ? new Date(r.checkedInAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'N/A'),
     escapeCsv(r.type === 'internal' ? 'Day 1 Internal (TKEC)' : 'Day 2 External'),
     escapeCsv(r.type === 'internal' ? '24-09-2026' : '25-09-2026'),
     escapeCsv(r.fullName),

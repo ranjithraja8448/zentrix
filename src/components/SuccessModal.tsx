@@ -146,14 +146,46 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({ result, onReset }) =
             </div>
           </div>
 
-          {/* Ticket Footer (Date & Location) */}
-          <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400">
-            <div className="flex items-center gap-1.5 text-cyan-300 font-semibold">
-              <Calendar className="w-3.5 h-3.5" /> 21-08-2026 (Friday) • 09:00 AM IST
+          {/* Ticket Footer with Scannable Pass QR Code */}
+          <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+            
+            {/* Scannable Check-In QR Code */}
+            <div className="flex items-center gap-3 bg-slate-950 p-2.5 rounded-xl border border-cyan-500/30">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(result.registrationId)}&bgcolor=060814&color=00f0ff`}
+                alt="Registration Pass QR Code"
+                className="w-16 h-16 rounded-lg border border-cyan-500/40 shrink-0"
+              />
+              <div className="text-left">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block">
+                  Scan for Entry Check-In
+                </span>
+                <span className="text-[10px] font-mono text-slate-400 block">
+                  ID: <strong className="text-white">{result.registrationId}</strong>
+                </span>
+                <span className="text-[9px] text-slate-500 block">
+                  Show at entrance desk
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-pink-400" /> Main Auditorium, Kavery Campus, Mecheri
+
+            {/* Date & Location Info */}
+            <div className="text-right sm:text-right space-y-1 text-xs">
+              <div className="flex items-center sm:justify-end gap-1.5 text-cyan-300 font-bold font-mono">
+                <Calendar className="w-3.5 h-3.5 text-pink-400" />
+                <span>
+                  {result.data.type === 'internal'
+                    ? '24-09-2026 (Day 1: Inter College)'
+                    : '25-09-2026 (Day 2: External College)'}
+                </span>
+              </div>
+              <div className="flex items-center sm:justify-end gap-1.5 text-[11px] text-slate-400">
+                <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Main Auditorium, Kavery Campus, Mecheri</span>
+              </div>
             </div>
+
           </div>
         </div>
 

@@ -63,6 +63,8 @@ export interface StoredRegistration {
   transactionId?: string;
   paymentScreenshotUrl?: string;
   paymentStatus: 'verified' | 'pending' | 'free';
+  checkedIn?: boolean;
+  checkedInAt?: string;
   createdAt: string;
 }
 
@@ -72,5 +74,10 @@ export interface AdminStats {
   internalCount: number;
   externalCount: number;
   totalRevenue: number;
+  checkedInCount: number;
+  checkedInInternalCount: number;
+  checkedInExternalCount: number;
+  pendingCheckInCount: number;
   eventsCount: Record<string, number>;
 }
+
