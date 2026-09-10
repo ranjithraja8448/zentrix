@@ -156,7 +156,7 @@ export default function Home() {
 
             <div className="mt-6 pt-4 border-t border-slate-800">
               <Link
-                href="/register/internal"
+                href="/internal"
                 id="btn-internal-registration"
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,0,127,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
@@ -198,7 +198,7 @@ export default function Home() {
 
             <div className="mt-6 pt-4 border-t border-slate-800">
               <Link
-                href="/register/external"
+                href="/external"
                 id="btn-external-registration"
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all"
               >

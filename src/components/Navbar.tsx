@@ -7,8 +7,9 @@ import { Cpu, Calendar, ShieldCheck, ArrowLeft, Users } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
-  const isInternalPage = pathname === '/register/internal';
-  const isExternalPage = pathname === '/register/external';
+  const isInternalPage = pathname?.startsWith('/internal') || pathname?.startsWith('/register/internal');
+  const isExternalPage = pathname?.startsWith('/external') || pathname?.startsWith('/register/external');
+  const logoHref = isInternalPage ? '/internal' : isExternalPage ? '/external' : '/';
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#060814]/85 backdrop-blur-xl transition-all">
@@ -16,7 +17,7 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-20">
           
           {/* Brand Logo & Name */}
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href={logoHref} className="flex items-center gap-3 group">
             <div className="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 via-purple-500/20 to-pink-500/20 border border-cyan-500/40 group-hover:border-cyan-400 group-hover:shadow-[0_0_18px_rgba(0,240,255,0.4)] transition-all duration-300">
               <Cpu className="w-6 h-6 text-cyan-400 group-hover:rotate-12 transition-transform duration-300" />
               <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-pink-500 animate-ping" />
@@ -44,15 +45,8 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-pink-950/60 border border-pink-500/50 text-xs text-pink-300 shadow-[0_0_15px_rgba(255,0,127,0.25)]">
                 <Calendar className="w-3.5 h-3.5 text-pink-400" />
-                <span>DAY 1: <strong className="text-white font-mono">24-09-2026</strong> (Inter College)</span>
+                <span>DAY 1: <strong className="text-white font-mono">24-09-2026</strong> (TKEC Inter College)</span>
               </div>
-              <Link
-                href="/"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition border border-slate-700"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Home</span>
-              </Link>
             </div>
           ) : isExternalPage ? (
             /* Locked to External Portal - strictly no internal link shown */
@@ -61,13 +55,6 @@ export const Navbar: React.FC = () => {
                 <Calendar className="w-3.5 h-3.5 text-cyan-400" />
                 <span>DAY 2: <strong className="text-white font-mono">25-09-2026</strong> (External College)</span>
               </div>
-              <Link
-                href="/"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition border border-slate-700"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Home</span>
-              </Link>
             </div>
           ) : (
             /* Home & Admin pages */

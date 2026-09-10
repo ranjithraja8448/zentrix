@@ -2,9 +2,14 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { MapPin, Phone, Mail, Award, Cpu, ShieldCheck } from 'lucide-react';
 
 export const Footer: React.FC = () => {
+  const pathname = usePathname();
+  const isInternalPage = pathname?.startsWith('/internal') || pathname?.startsWith('/register/internal');
+  const isExternalPage = pathname?.startsWith('/external') || pathname?.startsWith('/register/external');
+
   return (
     <footer className="mt-auto border-t border-slate-800/80 bg-[#04060e] relative overflow-hidden">
       {/* Ambient background glow */}
@@ -28,7 +33,7 @@ export const Footer: React.FC = () => {
             </div>
             
             <p className="text-sm text-slate-400 max-w-md leading-relaxed">
-              Join the pinnacle of engineering innovation at <strong>SYMPOSIUM 2K26</strong>. Compete with the brightest tech minds across top colleges and demonstrate technological brilliance.
+              Join the pinnacle of engineering innovation at <strong>ZENTRIX 2K26</strong>. Compete with the brightest tech minds across top colleges and demonstrate technological brilliance.
             </p>
 
             <div className="flex items-center gap-4 text-xs text-slate-400">
@@ -47,35 +52,55 @@ export const Footer: React.FC = () => {
               Quick Links
             </h4>
             <ul className="space-y-2 text-sm text-slate-400">
-              <li>
-                <Link href="/" className="hover:text-cyan-300 transition-colors">
-                  Symposium Home
-                </Link>
-              </li>
-              <li>
-                <Link href="/register/internal" className="hover:text-cyan-300 transition-colors">
-                  Internal College Registration
-                </Link>
-              </li>
-              <li>
-                <Link href="/register/external" className="hover:text-pink-300 transition-colors">
-                  External College Registration
-                </Link>
-              </li>
+              {isInternalPage ? (
+                <>
+                  <li>
+                    <Link href="/internal" className="text-pink-300 font-bold hover:text-white transition-colors">
+                      Day 1 Inter College Registration
+                    </Link>
+                  </li>
+                  <li>
+                    <span className="text-xs px-2 py-0.5 rounded bg-pink-950/80 text-pink-300 border border-pink-500/40 block">
+                      Event Date: 24-09-2026 (Fee: ₹150)
+                    </span>
+                  </li>
+                </>
+              ) : isExternalPage ? (
+                <>
+                  <li>
+                    <Link href="/external" className="text-cyan-300 font-bold hover:text-white transition-colors">
+                      Day 2 External College Registration
+                    </Link>
+                  </li>
+                  <li>
+                    <span className="text-xs px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 block">
+                      Event Date: 25-09-2026 (Fee: ₹200)
+                    </span>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    <Link href="/" className="hover:text-cyan-300 transition-colors">
+                      Symposium Home
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/internal" className="hover:text-pink-300 transition-colors">
+                      Day 1: Internal College (24 Sep)
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/external" className="hover:text-cyan-300 transition-colors">
+                      Day 2: External College (25 Sep)
+                    </Link>
+                  </li>
+                </>
+              )}
               <li>
                 <Link href="/admin" className="text-purple-400 hover:text-purple-300 transition-colors font-medium">
                   Coordinator Admin Portal →
                 </Link>
-              </li>
-              <li>
-                <span className="text-xs px-2 py-0.5 rounded bg-pink-950/80 text-pink-300 border border-pink-500/40 block">
-                  Day 1 (Internal): 24-09-2026
-                </span>
-              </li>
-              <li>
-                <span className="text-xs px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 block">
-                  Day 2 (External): 25-09-2026
-                </span>
               </li>
             </ul>
           </div>

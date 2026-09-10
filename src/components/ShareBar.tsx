@@ -11,7 +11,7 @@ export const ShareBar: React.FC<ShareBarProps> = ({ type }) => {
   const [copied, setCopied] = useState(false);
 
   const isInternal = type === 'internal';
-  const path = isInternal ? '/register/internal' : '/register/external';
+  const path = isInternal ? '/internal' : '/external';
   const label = isInternal 
     ? 'Day 1 (24 Sep) — Internal Student Link' 
     : 'Day 2 (25 Sep) — External College Link';

@@ -149,12 +149,34 @@ export default function AdminDashboardPage() {
             <span>Refresh</span>
           </button>
 
+          {/* Export Internal Only */}
+          <a
+            href="/api/admin/export?type=internal"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-pink-950/80 hover:bg-pink-900 border border-pink-500/50 text-pink-300 text-xs font-bold shadow-[0_0_15px_rgba(255,0,127,0.25)] transition"
+            title="Download Day 1 Internal Students CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Internal (.csv)</span>
+          </a>
+
+          {/* Export External Only */}
+          <a
+            href="/api/admin/export?type=external"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 text-xs font-bold shadow-[0_0_15px_rgba(0,240,255,0.25)] transition"
+            title="Download Day 2 External Delegates CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export External (.csv)</span>
+          </a>
+
+          {/* Export All */}
           <a
             href="/api/admin/export"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 text-xs font-bold shadow-[0_0_15px_rgba(16,185,129,0.25)] transition"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold transition"
+            title="Download All Registrations CSV"
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Export to CSV / Excel</span>
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Export All (.csv)</span>
           </a>
 
           <button
@@ -168,30 +190,30 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* SHAREABLE DIRECT LINKS CARD */}
-      <div className="p-5 rounded-2xl bg-slate-900/80 border border-cyan-500/30 backdrop-blur-md">
+      <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
         <div className="flex items-center gap-2 mb-3">
           <Share2 className="w-4 h-4 text-cyan-400" />
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-            Share Separate Registration Links
+            Share Separate Dedicated Registration Portals
           </h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
           {/* Internal Link Box */}
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-cyan-500/40 flex items-center justify-between gap-3">
+          <div className="p-4 rounded-xl bg-slate-950 border border-pink-500/40 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400 block">
-                Internal College (TKEC Students Only)
+              <span className="text-[11px] font-bold uppercase tracking-wider text-pink-400 block">
+                Day 1 (24 Sep) — Internal Students Only (₹150)
               </span>
-              <p className="text-xs font-mono text-slate-300 truncate">
-                /register/internal
+              <p className="text-xs font-mono text-slate-300 truncate mt-0.5">
+                /internal
               </p>
             </div>
 
             <button
-              onClick={() => copyShareLink('/register/internal', 'internal')}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 text-xs font-bold shrink-0 transition"
+              onClick={() => copyShareLink('/internal', 'internal')}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-pink-950 hover:bg-pink-900 border border-pink-500/50 text-pink-300 text-xs font-bold shrink-0 transition shadow-[0_0_10px_rgba(255,0,127,0.2)]"
             >
               {copiedLink === 'internal' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copiedLink === 'internal' ? 'Copied Link!' : 'Copy Internal Link'}</span>
@@ -199,19 +221,19 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* External Link Box */}
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-pink-500/40 flex items-center justify-between gap-3">
+          <div className="p-4 rounded-xl bg-slate-950 border border-cyan-500/40 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-pink-400 block">
-                External College (Other Institutions)
+              <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400 block">
+                Day 2 (25 Sep) — External College Delegates (₹200)
               </span>
-              <p className="text-xs font-mono text-slate-300 truncate">
-                /register/external
+              <p className="text-xs font-mono text-slate-300 truncate mt-0.5">
+                /external
               </p>
             </div>
 
             <button
-              onClick={() => copyShareLink('/register/external', 'external')}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-pink-950 hover:bg-pink-900 border border-pink-500/50 text-pink-300 text-xs font-bold shrink-0 transition"
+              onClick={() => copyShareLink('/external', 'external')}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 text-xs font-bold shrink-0 transition shadow-[0_0_10px_rgba(0,240,255,0.2)]"
             >
               {copiedLink === 'external' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copiedLink === 'external' ? 'Copied Link!' : 'Copy External Link'}</span>
@@ -307,31 +329,48 @@ export default function AdminDashboardPage() {
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           
-          {/* Type Filter Buttons */}
-          <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-1">
-            <button
-              onClick={() => setTypeFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                typeFilter === 'all' ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              All ({registrations.length})
-            </button>
+          {/* Distinct Type Filter Tabs */}
+          <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-1 gap-1">
             <button
               onClick={() => setTypeFilter('internal')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                typeFilter === 'internal' ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
+                typeFilter === 'internal'
+                  ? 'bg-pink-600 text-white shadow-[0_0_15px_rgba(255,0,127,0.4)]'
+                  : 'text-slate-400 hover:text-pink-300 hover:bg-pink-950/40'
               }`}
             >
-              Internal ({stats?.internalCount || 0})
+              <span>Day 1: Internal (24 Sep)</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-pink-950/80 border border-pink-500/40 font-mono">
+                {stats?.internalCount || 0}
+              </span>
             </button>
+
             <button
               onClick={() => setTypeFilter('external')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                typeFilter === 'external' ? 'bg-pink-500 text-white' : 'text-slate-400 hover:text-white'
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
+                typeFilter === 'external'
+                  ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(0,240,255,0.4)]'
+                  : 'text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/40'
               }`}
             >
-              External ({stats?.externalCount || 0})
+              <span>Day 2: External (25 Sep)</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-cyan-950/80 border border-cyan-500/40 font-mono">
+                {stats?.externalCount || 0}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setTypeFilter('all')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition ${
+                typeFilter === 'all'
+                  ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>All</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-950/80 border border-purple-500/40 font-mono">
+                {registrations.length}
+              </span>
             </button>
           </div>
 
